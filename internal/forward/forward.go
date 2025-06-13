@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/yourusername/netmgr/internal/common"
+	"github.com/RimakiTaema/netmgr/internal/common"
 )
 
 // PortForward represents a port forwarding rule
