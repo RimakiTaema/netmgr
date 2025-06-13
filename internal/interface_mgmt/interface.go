@@ -3,8 +3,6 @@ package interface_mgmt
 import (
 	"fmt"
 	"net"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"github.com/RimakiTaema/netmgr/internal/common"

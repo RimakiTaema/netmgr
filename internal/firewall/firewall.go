@@ -2,7 +2,6 @@ package firewall
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/RimakiTaema/netmgr/internal/common"
 )
