@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/netmgr/internal/common"
+	"github.com/RimakiTaema/netmgr/internal/common"
 )
 
 // HandleCommand processes diagnostic commands
