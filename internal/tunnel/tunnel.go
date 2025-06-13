@@ -3,7 +3,7 @@ package tunnel
 import (
 	"fmt"
 
-	"github.com/yourusername/netmgr/internal/common"
+	"github.com/RimakiTaema/netmgr/internal/common"
 )
 
 // HandleCommand processes tunnel commands
