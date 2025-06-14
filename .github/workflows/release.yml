@@ -171,25 +171,25 @@ jobs:
     - name: Build RPM package (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
       run: |
-        # Install rpm tools
-        sudo apt-get install -y rpm
+        # Install rpm tools and build dependencies
+        sudo apt-get install -y rpm rpmbuild rpm-build
         
         # Create RPM build structure
         mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Create spec file
-        cat > ~/rpmbuild/SPECS/netmgr.spec << 'EOF'
+        # Get current date for changelog
+        CHANGELOG_DATE=$(date +'%a %b %d %Y')
+        
+        # Create spec file with proper date
+        cat > ~/rpmbuild/SPECS/netmgr.spec << EOF
         Name:           netmgr
-        Version:        %{getenv:GITHUB_REF_NAME}
+        Version:        ${{ github.ref_name }}
         Release:        1%{?dist}
         Summary:        Cross-platform network management tool
         
         License:        MIT
-        URL:            https://github.com/netmgr/netmgr
+        URL:            https://github.com/RimakiTaema/netmgr
         Source0:        netmgr-%{version}.tar.gz
-        
-        BuildRequires:  gcc-c++ cmake ninja-build libjsoncpp-devel
-        Requires:       libjsoncpp
         
         %description
         A comprehensive network management utility that provides
@@ -200,12 +200,11 @@ jobs:
         %setup -q
         
         %build
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-        cmake --build build --config Release
+        # Binary is already built, just copy it
         
         %install
         mkdir -p %{buildroot}%{_bindir}
-        install -m 755 build/netmgr %{buildroot}%{_bindir}/netmgr
+        install -m 755 netmgr %{buildroot}%{_bindir}/netmgr
         
         %files
         %{_bindir}/netmgr
@@ -213,17 +212,20 @@ jobs:
         %license LICENSE
         
         %changelog
-        * $(date +'%a %b %d %Y') NetMgr Team <team@netmgr.org> - %{version}-1
+        * $CHANGELOG_DATE Rimaki <rimaki@rimakiproject.online> - %{version}-1
         - Initial release
         EOF
         
-        # Create source tarball
-        tar czf ~/rpmbuild/SOURCES/netmgr-${{ github.ref_name }}.tar.gz \
-          --transform 's,^,netmgr-${{ github.ref_name }}/,' \
-          --exclude='.git*' --exclude='build' .
+        # Create source directory and copy files
+        mkdir -p netmgr-${{ github.ref_name }}
+        cp build/netmgr netmgr-${{ github.ref_name }}/
+        cp README.md LICENSE netmgr-${{ github.ref_name }}/
         
-        # Build RPM
-        GITHUB_REF_NAME=${{ github.ref_name }} rpmbuild -ba ~/rpmbuild/SPECS/netmgr.spec
+        # Create source tarball
+        tar czf ~/rpmbuild/SOURCES/netmgr-${{ github.ref_name }}.tar.gz netmgr-${{ github.ref_name }}/
+        
+        # Build RPM (binary only since we already have the compiled binary)
+        rpmbuild -bb ~/rpmbuild/SPECS/netmgr.spec
         cp ~/rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
 
     - name: Create AppImage (Linux x86_64 only)
