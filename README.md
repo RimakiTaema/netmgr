@@ -1,72 +1,69 @@
-# Network Management Suite
+# NetMgr - Cross-Platform Network Management Tool
 
-A cross-platform network management tool inspired by Windows' netsh, but designed to work on Linux, macOS, and Windows.
+A powerful, cross-platform network management tool written in Rust, inspired by Windows' netsh but designed to work seamlessly on Linux, macOS, and Windows.
 
-## Features
+## 🚀 Features
 
-- Interface management (show, configure interfaces)
-- Routing management (show, add, delete routes)
-- Firewall management (show, add rules)
-- Port forwarding management
-- DNS configuration
-- Bandwidth management
-- Tunnel creation and management
-- Network diagnostics
+- **Interface Management** - Show, configure, and manage network interfaces
+- **Routing Management** - View and modify routing tables
+- **Firewall Management** - Configure firewall rules across platforms
+- **Port Forwarding** - Set up and manage port forwards
+- **DNS Configuration** - Manage DNS settings
+- **Bandwidth Management** - Traffic shaping and QoS
+- **Tunnel Management** - Create and manage network tunnels
+- **Network Diagnostics** - Connectivity tests, port scanning, bandwidth monitoring
 
 ## ⚠️ Important Warnings
 
-🛑 **If you are running on Termux proot or emulated Linux via phone:**
-I don't guarantee it will work since it utilizes iptables and other system-level commands that require root access. Many network operations may fail or behave unexpectedly in containerized or emulated environments.
-
-⚠️ **Root/Administrator privileges required:**
+🛑 **Root/Administrator privileges required:**
 This tool modifies system network settings and requires elevated privileges to function properly.
 
-## Installation
+🛑 **Platform Compatibility:**
+While designed to be cross-platform, some features may have limited functionality on certain platforms due to OS-specific networking implementations.
+
+## 🔧 Installation
+
+### Prerequisites
+
+- Rust 1.70+ (for building from source)
+- Platform-specific network tools:
+  - **Linux**: `ip`, `iptables`, `tc`
+  - **Windows**: `netsh`, `powershell`
+  - **macOS**: `networksetup`, `scutil`, `pfctl`
 
 ### From Source
 
 1. Clone the repository:
-   \`\`\`
+   \`\`\`bash
    git clone https://github.com/yourusername/netmgr.git
    cd netmgr
    \`\`\`
 
 2. Build for your platform:
-   \`\`\`
-   make build
+   \`\`\`bash
+   cargo build --release
    \`\`\`
 
 3. Install (Linux/macOS):
-   \`\`\`
-   make install
+   \`\`\`bash
+   sudo cp target/release/netmgr /usr/local/bin/
    \`\`\`
 
 ### Cross-Compilation
 
 To build for multiple platforms:
 
-\`\`\`
+\`\`\`bash
 make build-all
 \`\`\`
 
-This will create binaries for various platforms in the `build` directory.
+This will create binaries for various platforms in the `target` directory.
 
-## Usage
+## 📖 Usage
 
-\`\`\`
+\`\`\`bash
 netmgr <context> <command> [parameters...]
 \`\`\`
-
-### Contexts
-
-- `interface`: Network interface management
-- `route`: Routing table management
-- `firewall`: Firewall rules management
-- `forward`: Port forwarding management
-- `dns`: DNS configuration
-- `bandwidth`: Traffic shaping and QoS
-- `tunnel`: Tunnel interfaces
-- `diag`: Network diagnostics
 
 ### Global Options
 
@@ -75,63 +72,124 @@ netmgr <context> <command> [parameters...]
 - `-f, --force`: Force operations without confirmation
 - `-h, --help`: Show help
 
-### Examples
+### Contexts
 
-\`\`\`
+#### Interface Management
+\`\`\`bash
 # Show all interfaces
 netmgr interface show
 
-# Set IP address on interface
+# Show specific interface
+netmgr interface show eth0
+
+# Set IP address
 netmgr interface set eth0 ip 192.168.1.100 24
 
-# Add a route
-netmgr route add 10.0.0.0/8 via 192.168.1.1
+# Bring interface up/down
+netmgr interface set eth0 up
+netmgr interface set eth0 down
 
-# Allow SSH traffic
+# Set MTU
+netmgr interface set eth0 mtu 1500
+\`\`\`
+
+#### Route Management
+\`\`\`bash
+# Show routing table
+netmgr route show
+
+# Add route
+netmgr route add 10.0.0.0/8 --via 192.168.1.1
+
+# Delete route
+netmgr route delete 10.0.0.0/8
+\`\`\`
+
+#### Firewall Management
+\`\`\`bash
+# Show firewall rules
+netmgr firewall show
+
+# Allow port
 netmgr firewall rule allow 22 tcp
 
-# Add port forwarding
-netmgr forward add minecraft 25565 10.0.0.2 25565
+# Block port
+netmgr firewall rule deny 25 tcp
+
+# Flush rules
+netmgr firewall rule flush
+\`\`\`
+
+#### Port Forwarding
+\`\`\`bash
+# Show forwards
+netmgr forward show
+
+# Add port forward
+netmgr forward add web 80 192.168.1.100 8080 --protocol tcp
+
+# Remove forward
+netmgr forward remove web
+\`\`\`
+
+#### DNS Configuration
+\`\`\`bash
+# Show DNS settings
+netmgr dns show
 
 # Set DNS servers
 netmgr dns set 8.8.8.8 1.1.1.1
+\`\`\`
+
+#### Bandwidth Management
+\`\`\`bash
+# Show bandwidth config
+netmgr bandwidth show eth0
 
 # Limit bandwidth
 netmgr bandwidth limit eth0 100mbit
+\`\`\`
 
+#### Network Diagnostics
+\`\`\`bash
 # Test connectivity
-netmgr diag connectivity google.com
+netmgr diag connectivity google.com --count 5
+
+# Test ports
+netmgr diag ports 192.168.1.1 22,80,443
+
+# Monitor bandwidth
+netmgr diag bandwidth eth0 --duration 30
 \`\`\`
 
-## Platform Support
+## 🏗️ Architecture
 
-The tool adapts its commands based on the operating system:
+NetMgr is built with a modular architecture:
 
-- **Linux**: Uses `ip`, `iptables`, `tc`, etc.
-- **Windows**: Uses `netsh`, `route`, PowerShell commands
-- **macOS**: Uses `networksetup`, `pfctl`, `ipfw`, etc.
+- **CLI Layer** - Command parsing and user interface
+- **Common Layer** - Shared utilities, configuration, and platform detection
+- **Module Layer** - Feature-specific implementations
+- **Platform Layer** - OS-specific command execution
 
-Some features may have limited functionality on certain platforms.
+### Key Features
 
-## Troubleshooting
+- **Memory Safety** - Written in Rust for guaranteed memory safety
+- **Cross-Platform** - Single codebase supporting Linux, Windows, and macOS
+- **Async Operations** - Built on Tokio for efficient I/O operations
+- **Configuration Management** - JSON-based configuration with automatic backups
+- **Comprehensive Logging** - Detailed logging with multiple levels
+- **Dry-Run Mode** - Test commands without making changes
 
-### Common Issues
+## 🤝 Contributing
 
-- **Permission denied errors**: Make sure you're running the tool with administrator/root privileges
-- **Command not found errors**: Ensure required system utilities are installed
-- **Network interface not found**: Verify the interface name is correct for your system
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-### Platform-Specific Notes
+## 📄 License
 
-- **Windows**: Some features require PowerShell and may prompt for UAC elevation
-- **macOS**: System Integrity Protection may block certain operations
-- **Linux**: Different distributions may have different paths for network utilities
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## License
+## 🙏 Acknowledgments
 
-MIT
-\`\`\`
-
-I've added the warning with a red stop sign emoji to make it highly visible, and I've also expanded the README with a troubleshooting section that might be helpful for users. The warning clearly states that the tool may not work properly in Termux proot or emulated Linux environments on phones due to the need for root access and system-level networking commands.
-
-Would you like me to make any other additions or changes to the documentation?
+- Inspired by Windows `netsh` command
+- Built with the amazing Rust ecosystem
+- Thanks to all contributors and testers

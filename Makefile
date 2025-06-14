@@ -1,50 +1,46 @@
-# Makefile for cross-compiling netmgr
+# Makefile for cross-compiling netmgr in Rust
 
 # Binary name
 BINARY_NAME=netmgr
 
 # Build directory
-BUILD_DIR=build
+BUILD_DIR=target
 
 # Version
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-# Build flags
-LDFLAGS=-ldflags "-X main.version=$(VERSION)"
-
 # Platforms to build for
-PLATFORMS=linux/amd64 linux/386 linux/arm linux/arm64 windows/amd64 windows/386 darwin/amd64 darwin/arm64
+PLATFORMS=x86_64-unknown-linux-gnu \
+          i686-unknown-linux-gnu \
+          aarch64-unknown-linux-gnu \
+          x86_64-pc-windows-gnu \
+          i686-pc-windows-gnu \
+          x86_64-apple-darwin \
+          aarch64-apple-darwin
 
-.PHONY: all clean build-all $(PLATFORMS)
+.PHONY: all clean build-all install test $(PLATFORMS)
 
 all: build-all
 
 clean:
-	rm -rf $(BUILD_DIR)
+	cargo clean
 
 build-all: $(PLATFORMS)
 
 $(PLATFORMS):
-	$(eval PLATFORM_SPLIT := $(subst /, ,$@))
-	$(eval GOOS := $(word 1, $(PLATFORM_SPLIT)))
-	$(eval GOARCH := $(word 2, $(PLATFORM_SPLIT)))
-	$(eval OUTPUT_NAME := $(BINARY_NAME))
-	@if [ "$(GOOS)" = "windows" ]; then \
-		OUTPUT_NAME=$(BINARY_NAME).exe; \
-	fi
-	@echo "Building for $(GOOS)/$(GOARCH)..."
-	@mkdir -p $(BUILD_DIR)/$(GOOS)-$(GOARCH)
-	@GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(LDFLAGS) -o $(BUILD_DIR)/$(GOOS)-$(GOARCH)/$(OUTPUT_NAME) ./cmd/netmgr
+	@echo "Building for $@..."
+	@rustup target add $@ 2>/dev/null || true
+	@cargo build --release --target $@
 	@echo "Done!"
 
 # Build for current platform
 build:
-	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/netmgr
+	cargo build --release
 
 # Install to system
 install: build
 	@if [ "$(shell uname)" = "Linux" ] || [ "$(shell uname)" = "Darwin" ]; then \
-		sudo cp $(BINARY_NAME) /usr/local/bin/; \
+		sudo cp target/release/$(BINARY_NAME) /usr/local/bin/; \
 		echo "Installed to /usr/local/bin/$(BINARY_NAME)"; \
 	else \
 		echo "Installation not supported on this platform"; \
@@ -52,4 +48,20 @@ install: build
 
 # Run tests
 test:
-	go test -v ./...
+	cargo test
+
+# Format code
+fmt:
+	cargo fmt
+
+# Check code
+check:
+	cargo check
+
+# Clippy linting
+clippy:
+	cargo clippy -- -D warnings
+
+# Build documentation
+docs:
+	cargo doc --open
