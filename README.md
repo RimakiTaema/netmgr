@@ -34,36 +34,36 @@ While designed to be cross-platform, some features may have limited functionalit
 ### From Source
 
 1. Clone the repository:
-   ```bash
+   \`\`\`bash
    git clone https://github.com/RimakiTaema/netmgr.git
    cd netmgr
-   ```
+   \`\`\`
 
 2. Build for your platform:
-   ```bash
+   \`\`\`bash
    cargo build --release
-   ```
+   \`\`\`
 
 3. Install (Linux/macOS):
-   ```bash
+   \`\`\`bash
    sudo cp target/release/netmgr /usr/local/bin/
-   ```
+   \`\`\`
 
 ### Cross-Compilation
 
 To build for multiple platforms:
 
-```bash
+\`\`\`bash
 make build-all
-```
+\`\`\`
 
 This will create binaries for various platforms in the `target` directory.
 
 ## 📖 Usage
 
-```bash
+\`\`\`bash
 netmgr <context> <command> [parameters...]
-```
+\`\`\`
 
 ### Global Options
 
@@ -75,7 +75,7 @@ netmgr <context> <command> [parameters...]
 ### Contexts
 
 #### Interface Management
-```bash
+\`\`\`bash
 # Show all interfaces
 netmgr interface show
 
@@ -91,10 +91,10 @@ netmgr interface set eth0 down
 
 # Set MTU
 netmgr interface set eth0 mtu 1500
-```
+\`\`\`
 
 #### Route Management
-```bash
+\`\`\`bash
 # Show routing table
 netmgr route show
 
@@ -103,10 +103,10 @@ netmgr route add 10.0.0.0/8 --via 192.168.1.1
 
 # Delete route
 netmgr route delete 10.0.0.0/8
-```
+\`\`\`
 
 #### Firewall Management
-```bash
+\`\`\`bash
 # Show firewall rules
 netmgr firewall show
 
@@ -118,10 +118,10 @@ netmgr firewall rule deny 25 tcp
 
 # Flush rules
 netmgr firewall rule flush
-```
+\`\`\`
 
 #### Port Forwarding
-```bash
+\`\`\`bash
 # Show forwards
 netmgr forward show
 
@@ -130,28 +130,28 @@ netmgr forward add web 80 192.168.1.100 8080 --protocol tcp
 
 # Remove forward
 netmgr forward remove web
-```
+\`\`\`
 
 #### DNS Configuration
-```bash
+\`\`\`bash
 # Show DNS settings
 netmgr dns show
 
 # Set DNS servers
 netmgr dns set 8.8.8.8 1.1.1.1
-```
+\`\`\`
 
 #### Bandwidth Management
-```bash
+\`\`\`bash
 # Show bandwidth config
 netmgr bandwidth show eth0
 
 # Limit bandwidth
 netmgr bandwidth limit eth0 100mbit
-```
+\`\`\`
 
 #### Network Diagnostics
-```bash
+\`\`\`bash
 # Test connectivity
 netmgr diag connectivity google.com --count 5
 
@@ -160,7 +160,7 @@ netmgr diag ports 192.168.1.1 22,80,443
 
 # Monitor bandwidth
 netmgr diag bandwidth eth0 --duration 30
-```
+\`\`\`
 
 ## 🏗️ Architecture
 

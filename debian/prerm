@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+# Pre-removal script for netmgr
+
+# Stop any running netmgr processes
+pkill -f netmgr || true
+
+#DEBHELPER#
+
+exit 0

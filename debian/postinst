@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+# Post-installation script for netmgr
+
+# Create netmgr group if it doesn't exist
+if ! getent group netmgr >/dev/null; then
+    addgroup --system netmgr
+fi
+
+# Set appropriate capabilities for network management
+# This allows the binary to perform network operations without running as root
+if command -v setcap >/dev/null 2>&1; then
+    setcap 'cap_net_admin,cap_net_raw+ep' /usr/bin/netmgr || true
+fi
+
+# Create configuration directory
+mkdir -p /etc/netmgr
+chmod 755 /etc/netmgr
+
+# Create log directory
+mkdir -p /var/log/netmgr
+chmod 755 /var/log/netmgr
+
+echo "netmgr installed successfully!"
+echo "Note: This tool requires administrator privileges for most operations."
+echo "Run 'netmgr --help' to get started."
+
+#DEBHELPER#
+
+exit 0

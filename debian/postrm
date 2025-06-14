@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+# Post-removal script for netmgr
+
+case "$1" in
+    purge)
+        # Remove configuration directory on purge
+        rm -rf /etc/netmgr || true
+        rm -rf /var/log/netmgr || true
+        
+        # Remove netmgr group if it exists and is empty
+        if getent group netmgr >/dev/null; then
+            delgroup netmgr 2>/dev/null || true
+        fi
+        ;;
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # Do nothing for these cases
+        ;;
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

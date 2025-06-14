@@ -64,3 +64,24 @@ mac_address = "1.1"
 
 [dev-dependencies]
 tempfile = "3.8"
+
+# Debian package configuration
+[package.metadata.deb]
+maintainer = "Your Name <your.email@example.com>"
+copyright = "2024, Your Name <your.email@example.com>"
+license-file = ["LICENSE", "4"]
+extended-description = """\
+A comprehensive cross-platform network management tool that provides \
+interface management, routing, firewall configuration, DNS management, \
+bandwidth monitoring, tunneling, and network diagnostics capabilities."""
+depends = "$auto"
+section = "net"
+priority = "optional"
+assets = [
+    ["target/release/netmgr", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/netmgr/", "644"],
+    ["LICENSE", "usr/share/doc/netmgr/", "644"],
+]
+conf-files = []
+maintainer-scripts = "debian/"
+systemd-units = { enable = false }
