@@ -1,8 +1,8 @@
 [package]
 name = "netmgr"
-version = "1.0.0"
-edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+version = "1.0.0-b-unstable1"
+edition = "2025"
+authors = ["Rimaki <rimaki@rimakiproject.online>"]
 description = "Cross-platform network management tool"
 license = "MIT"
 repository = "https://github.com/yourusername/netmgr"
@@ -67,8 +67,8 @@ tempfile = "3.8"
 
 # Debian package configuration
 [package.metadata.deb]
-maintainer = "Your Name <your.email@example.com>"
-copyright = "2024, Your Name <your.email@example.com>"
+maintainer = "Rimaki <rimaki@rimakiproject.online>"
+copyright = "2025, Rimaki <rimaki@rimakiproject.online>"
 license-file = ["LICENSE", "4"]
 extended-description = """\
 A comprehensive cross-platform network management tool that provides \
