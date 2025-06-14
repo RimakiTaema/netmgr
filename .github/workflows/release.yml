@@ -5,25 +5,31 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
+      release_id: ${{ steps.release.outputs.id }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Create Release
         id: release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') || contains(github.ref_name, 'unstable') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-release:
     needs: create-release
@@ -33,30 +39,76 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            name: netmgr-linux-x86_64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            name: netmgr-linux-aarch64
           - os: macos-latest
             target: x86_64-apple-darwin
+            name: netmgr-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: netmgr-macos-aarch64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            name: netmgr-windows-x86_64.exe
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
+        targets: ${{ matrix.target }}
+
+    - name: Install cross-compilation tools (Linux)
+      if: matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
 
     - name: Install cargo-deb (Linux only)
       if: matrix.os == 'ubuntu-latest'
       run: cargo install cargo-deb
 
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build release binary
-      run: cargo build --release --target ${{ matrix.target }}
+      run: |
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          export CC=aarch64-linux-gnu-gcc
+          export CXX=aarch64-linux-gnu-g++
+        fi
+        cargo build --release --target ${{ matrix.target }}
+      shell: bash
+
+    - name: Strip binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          aarch64-linux-gnu-strip target/${{ matrix.target }}/release/netmgr
+        else
+          strip target/${{ matrix.target }}/release/netmgr
+        fi
+
+    - name: Prepare binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cp target/${{ matrix.target }}/release/netmgr ${{ matrix.name }}
+        chmod +x ${{ matrix.name }}
+
+    - name: Prepare binary (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cp target/${{ matrix.target }}/release/netmgr.exe ${{ matrix.name }}
 
     - name: Build Debian package (Linux x86_64 only)
       if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu'
@@ -64,23 +116,12 @@ jobs:
         cargo deb --target ${{ matrix.target }}
         cp target/${{ matrix.target }}/debian/*.deb netmgr_${{ github.ref_name }}_amd64.deb
 
-    - name: Upload Debian Package
-      if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu'
-      uses: actions/upload-release-asset@v1
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        files: |
+          ${{ matrix.name }}
+          ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu' && format('netmgr_{0}_amd64.deb', github.ref_name) || '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: netmgr_${{ github.ref_name }}_amd64.deb
-        asset_name: netmgr_${{ github.ref_name }}_amd64.deb
-        asset_content_type: application/vnd.debian.binary-package
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: target/${{ matrix.target }}/release/netmgr
-        asset_name: netmgr-${{ matrix.target }}
-        asset_content_type: application/octet-stream
