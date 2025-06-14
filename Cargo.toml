@@ -1,11 +1,11 @@
 [package]
 name = "netmgr"
-version = "1.0.0-b-unstable1"
-edition = "2024"
+version = "0.1.0-beta.1"
+edition = "2021"
 authors = ["Rimaki <rimaki@rimakiproject.online>"]
 description = "Cross-platform network management tool"
 license = "MIT"
-repository = "https://github.com/yourusername/netmgr"
+repository = "https://github.com/RimakiTaema/netmgr"
 
 [[bin]]
 name = "netmgr"
@@ -34,6 +34,18 @@ env_logger = "0.10"
 crossterm = { version = "0.27", features = ["event-stream"] }
 dirs = "5.0"
 
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# System utilities
+which = "6.0"
+libc = "0.2"
+
+# Common networking
+socket2 = "0.5"
+ipnet = "2.9"
+mac_address = "1.1"
+
 # Networking - Linux
 [target.'cfg(target_os = "linux")'.dependencies]
 netlink-packet-route = "0.17"
@@ -56,11 +68,6 @@ windows = { version = "0.52", features = [
 [target.'cfg(target_os = "macos")'.dependencies]
 system-configuration = "0.5"
 core-foundation = "0.9"
-
-# Common networking
-socket2 = "0.5"
-ipnet = "2.9"
-mac_address = "1.1"
 
 [dev-dependencies]
 tempfile = "3.8"
