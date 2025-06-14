@@ -333,7 +333,7 @@ jobs:
         debuild -S -sa
         
         # Upload to PPA
-        dput ppa:netmgr/stable ../netmgr_*.changes
+        dput ppa:rimakitaema/netmgr ../netmgr_*.changes
 
     - name: Create Homebrew formula
       run: |
