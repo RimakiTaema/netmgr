@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]*'
 
 permissions:
   contents: write
@@ -309,8 +309,8 @@ jobs:
         platforms: linux/amd64,linux/arm64
         push: true
         tags: |
-          ghcr.io/${{ github.repository }}:latest
-          ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          ghcr.io/rimakitaema/netmgr:latest
+          ghcr.io/rimakitaema/netmgr:${{ github.ref_name }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
