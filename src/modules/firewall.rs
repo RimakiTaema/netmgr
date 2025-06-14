@@ -94,14 +94,18 @@ async fn allow_port(port: &str, protocol: &str, interface: Option<&str>, options
     #[cfg(target_os = "windows")]
     {
         let name = format!("NetMgr-Allow-{}-{}", protocol, port);
+        let protocol_arg = format!("protocol={}", protocol);
+        let port_arg = format!("localport={}", port);
+        
         let mut args = vec!["advfirewall", "firewall", "add", "rule", 
                            &format!("name={}", name),
-                           &format!("protocol={}", protocol),
-                           &format!("localport={}", port),
+                           &protocol_arg,
+                           &port_arg,
                            "dir=in", "action=allow"];
         
         if let Some(iface) = interface {
-            args.push(&format!("interface={}", iface));
+            let interface_arg = format!("interface={}", iface);
+            args.push(&interface_arg);
         }
         
         execute_command("netsh", &args, options).await?;
@@ -138,14 +142,18 @@ async fn deny_port(port: &str, protocol: &str, interface: Option<&str>, options:
     #[cfg(target_os = "windows")]
     {
         let name = format!("NetMgr-Block-{}-{}", protocol, port);
+        let protocol_arg = format!("protocol={}", protocol);
+        let port_arg = format!("localport={}", port);
+        
         let mut args = vec!["advfirewall", "firewall", "add", "rule", 
                            &format!("name={}", name),
-                           &format!("protocol={}", protocol),
-                           &format!("localport={}", port),
+                           &protocol_arg,
+                           &port_arg,
                            "dir=in", "action=block"];
         
         if let Some(iface) = interface {
-            args.push(&format!("interface={}", iface));
+            let interface_arg = format!("interface={}", iface);
+            args.push(&interface_arg);
         }
         
         execute_command("netsh", &args, options).await?;
