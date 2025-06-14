@@ -1,7 +1,7 @@
 [package]
 name = "netmgr"
 version = "1.0.0-b-unstable1"
-edition = "2025"
+edition = "2024"
 authors = ["Rimaki <rimaki@rimakiproject.online>"]
 description = "Cross-platform network management tool"
 license = "MIT"
