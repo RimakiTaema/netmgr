@@ -155,10 +155,15 @@ jobs:
          and network diagnostics across different platforms.
         EOF
         
-        # Copy postinst and postrm scripts
-        cp debian/postinst package/DEBIAN/
-        cp debian/postrm package/DEBIAN/
-        chmod 755 package/DEBIAN/postinst package/DEBIAN/postrm
+        # Copy postinst and postrm scripts if they exist
+        if [ -f debian/postinst ]; then
+          cp debian/postinst package/DEBIAN/
+          chmod 755 package/DEBIAN/postinst
+        fi
+        if [ -f debian/postrm ]; then
+          cp debian/postrm package/DEBIAN/
+          chmod 755 package/DEBIAN/postrm
+        fi
         
         # Build package
         dpkg-deb --build package netmgr_${{ github.ref_name }}_amd64.deb
@@ -224,6 +229,9 @@ jobs:
     - name: Create AppImage (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
       run: |
+        # Install imagemagick for icon creation
+        sudo apt-get install -y imagemagick
+        
         # Download AppImage tools
         wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
@@ -260,7 +268,7 @@ jobs:
         cp NetMgr.AppDir/usr/share/applications/netmgr.desktop NetMgr.AppDir/
         
         # Create simple icon (placeholder)
-        convert -size 256x256 xc:blue NetMgr.AppDir/netmgr.png || echo "No icon created"
+        convert -size 256x256 xc:blue NetMgr.AppDir/netmgr.png || echo "Icon creation failed, continuing without icon"
         
         # Build AppImage
         ./appimagetool-x86_64.AppImage NetMgr.AppDir netmgr-${{ github.ref_name }}-x86_64.AppImage
@@ -318,16 +326,29 @@ jobs:
       uses: actions/download-artifact@v3
 
     - name: Setup GPG for package signing
+      if: ${{ secrets.GPG_PRIVATE_KEY }}
       run: |
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
         echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --sign --armor --detach-sign README.md
 
     - name: Publish to Launchpad PPA
-      if: secrets.LAUNCHPAD_PPA_KEY != ''
+      if: ${{ secrets.LAUNCHPAD_PPA_KEY }}
       run: |
         # Setup Launchpad credentials
-        echo "${{ secrets.LAUNCHPAD_PPA_KEY }}" > ~/.ssh/launchpad_key
-        chmod 600 ~/.ssh/launchpad_key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.LAUNCHPAD_PPA_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Setup SSH config for Launchpad
+        cat >> ~/.ssh/config << EOF
+        Host ppa.launchpad.net
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+        EOF
+        
+        # Install dput and devscripts if not available
+        sudo apt-get update
+        sudo apt-get install -y dput devscripts
         
         # Build source package for Launchpad
         debuild -S -sa
