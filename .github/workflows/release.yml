@@ -140,15 +140,18 @@ jobs:
         cp README.md package/usr/share/doc/netmgr/
         cp LICENSE package/usr/share/doc/netmgr/
         
+        # Clean version string for package
+        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+        
         # Create control file
         cat > package/DEBIAN/control << EOF
         Package: netmgr
-        Version: ${{ github.ref_name }}
+        Version: ${VERSION}
         Section: net
         Priority: optional
         Architecture: amd64
         Depends: libc6 (>= 2.17), libstdc++6 (>= 5.4.0), libjsoncpp25 (>= 1.7.4)
-        Maintainer: NetMgr Team <team@netmgr.org>
+        Maintainer: Rimaki <rimaki@rimakiproject.online>
         Description: Cross-platform network management tool
          A comprehensive network management utility that provides
          unified interface management, routing, firewall configuration,
@@ -166,30 +169,29 @@ jobs:
         fi
         
         # Build package
-        dpkg-deb --build package netmgr_${{ github.ref_name }}_amd64.deb
+        dpkg-deb --build package netmgr_${VERSION}_amd64.deb
 
     - name: Build RPM package (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
       run: |
-        # Install rpm tools and build dependencies
-        sudo apt-get install -y rpm rpmbuild rpm-build
+        # Install rpm tools
+        sudo apt-get install -y rpm
+        
+        # Clean version string for RPM
+        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
         
         # Create RPM build structure
-        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Get current date for changelog
-        CHANGELOG_DATE=$(date +'%a %b %d %Y')
-        
-        # Create spec file with proper date
-        cat > ~/rpmbuild/SPECS/netmgr.spec << EOF
+        # Create spec file
+        cat > rpmbuild/SPECS/netmgr.spec << EOF
         Name:           netmgr
-        Version:        ${{ github.ref_name }}
-        Release:        1%{?dist}
+        Version:        ${VERSION}
+        Release:        1
         Summary:        Cross-platform network management tool
         
         License:        MIT
         URL:            https://github.com/RimakiTaema/netmgr
-        Source0:        netmgr-%{version}.tar.gz
         
         %description
         A comprehensive network management utility that provides
@@ -197,45 +199,35 @@ jobs:
         and network diagnostics across different platforms.
         
         %prep
-        %setup -q
         
         %build
-        # Binary is already built, just copy it
         
         %install
         mkdir -p %{buildroot}%{_bindir}
-        install -m 755 netmgr %{buildroot}%{_bindir}/netmgr
+        cp %{_sourcedir}/netmgr %{buildroot}%{_bindir}/netmgr
         
         %files
         %{_bindir}/netmgr
-        %doc README.md
-        %license LICENSE
         
         %changelog
-        * $CHANGELOG_DATE Rimaki <rimaki@rimakiproject.online> - %{version}-1
-        - Initial release
+        * $(date '+%a %b %d %Y') Rimaki <rimaki@rimakiproject.online> - ${VERSION}-1
+        - Release ${VERSION}
         EOF
         
-        # Create source directory and copy files
-        mkdir -p netmgr-${{ github.ref_name }}
-        cp build/netmgr netmgr-${{ github.ref_name }}/
-        cp README.md LICENSE netmgr-${{ github.ref_name }}/
+        # Copy binary to SOURCES
+        cp build/netmgr rpmbuild/SOURCES/
         
-        # Create source tarball
-        tar czf ~/rpmbuild/SOURCES/netmgr-${{ github.ref_name }}.tar.gz netmgr-${{ github.ref_name }}/
+        # Build RPM
+        rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/netmgr.spec
         
-        # Build RPM (binary only since we already have the compiled binary)
-        rpmbuild -bb ~/rpmbuild/SPECS/netmgr.spec
-        cp ~/rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
+        # Copy RPM to current directory
+        cp rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
 
     - name: Create AppImage (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
       run: |
-        # Install imagemagick for icon creation
-        sudo apt-get install -y imagemagick
-        
         # Download AppImage tools
-        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
         
         # Create AppDir structure
@@ -269,11 +261,18 @@ jobs:
         # Copy desktop file to root
         cp NetMgr.AppDir/usr/share/applications/netmgr.desktop NetMgr.AppDir/
         
-        # Create simple icon (placeholder)
-        convert -size 256x256 xc:blue NetMgr.AppDir/netmgr.png || echo "Icon creation failed, continuing without icon"
+        # Create simple icon using text (fallback)
+        echo "Creating icon..."
+        cat > NetMgr.AppDir/netmgr.svg << 'EOF'
+        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+          <rect width="256" height="256" fill="#4285f4"/>
+          <text x="128" y="140" font-family="Arial" font-size="48" fill="white" text-anchor="middle">NetMgr</text>
+        </svg>
+        EOF
         
         # Build AppImage
-        ./appimagetool-x86_64.AppImage NetMgr.AppDir netmgr-${{ github.ref_name }}-x86_64.AppImage
+        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+        ./appimagetool-x86_64.AppImage NetMgr.AppDir netmgr-${VERSION}-x86_64.AppImage
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
@@ -281,9 +280,9 @@ jobs:
         tag_name: ${{ github.ref_name }}
         files: |
           ${{ matrix.name }}
-          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && format('netmgr_{0}_amd64.deb', github.ref_name) || '' }}
-          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && 'netmgr-*.rpm' || '' }}
-          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && format('netmgr-{0}-x86_64.AppImage', github.ref_name) || '' }}
+          *.deb
+          *.rpm
+          *.AppImage
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -304,6 +303,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Extract version
+      id: version
+      run: echo "version=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -312,20 +315,20 @@ jobs:
         push: true
         tags: |
           ghcr.io/rimakitaema/netmgr:latest
-          ghcr.io/rimakitaema/netmgr:${{ github.ref_name }}
+          ghcr.io/rimakitaema/netmgr:${{ steps.version.outputs.version }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
   publish-packages:
     needs: [create-release, build-release]
     runs-on: ubuntu-22.04
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
 
     - name: Setup GPG for package signing
       env:
@@ -333,39 +336,19 @@ jobs:
       if: env.GPG_PRIVATE_KEY != ''
       run: |
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
-        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --sign --armor --detach-sign README.md
-
-    - name: Publish to Launchpad PPA
-      env:
-        LAUNCHPAD_PPA_KEY: ${{ secrets.LAUNCHPAD_PPA_KEY }}
-      if: env.LAUNCHPAD_PPA_KEY != ''
-      run: |
-        # Setup Launchpad credentials
-        mkdir -p ~/.ssh
-        echo "${{ secrets.LAUNCHPAD_PPA_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-        # Setup SSH config for Launchpad
-        cat >> ~/.ssh/config << EOF
-        Host ppa.launchpad.net
-            IdentityFile ~/.ssh/id_rsa
-            StrictHostKeyChecking no
-        EOF
-        
-        # Install dput and devscripts if not available
-        sudo apt-get update
-        sudo apt-get install -y dput devscripts
-        
-        # Build source package for Launchpad
-        debuild -S -sa
-        
-        # Upload to PPA
-        dput ppa:rimakitaema/netmgr ../netmgr_*.changes
+        echo "GPG key imported successfully"
 
     - name: Create Homebrew formula
       run: |
-        # Calculate SHA256 for macOS binary
-        MACOS_SHA256=$(sha256sum netmgr-macos-x86_64 | cut -d' ' -f1)
+        # Extract version
+        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+        
+        # Calculate SHA256 for macOS binary (if it exists)
+        if [ -f "netmgr-macos-x86_64" ]; then
+          MACOS_SHA256=$(sha256sum netmgr-macos-x86_64 | cut -d' ' -f1)
+        else
+          MACOS_SHA256="PLACEHOLDER_SHA256"
+        fi
         
         # Create Homebrew formula
         cat > netmgr.rb << EOF
@@ -374,7 +357,7 @@ jobs:
           homepage "https://github.com/RimakiTaema/netmgr"
           url "https://github.com/RimakiTaema/netmgr/releases/download/${{ github.ref_name }}/netmgr-macos-x86_64"
           sha256 "$MACOS_SHA256"
-          version "${{ github.ref_name }}"
+          version "$VERSION"
         
           def install
             bin.install "netmgr-macos-x86_64" => "netmgr"
@@ -386,5 +369,4 @@ jobs:
         end
         EOF
         
-        # Upload formula (would need homebrew-tap repository)
         echo "Homebrew formula created: netmgr.rb"
