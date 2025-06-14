@@ -344,8 +344,8 @@ jobs:
         cat > netmgr.rb << EOF
         class Netmgr < Formula
           desc "Cross-platform network management tool"
-          homepage "https://github.com/netmgr/netmgr"
-          url "https://github.com/netmgr/netmgr/releases/download/${{ github.ref_name }}/netmgr-macos-x86_64"
+          homepage "https://github.com/RimakiTaema/netmgr"
+          url "https://github.com/RimakiTaema/netmgr/releases/download/${{ github.ref_name }}/netmgr-macos-x86_64"
           sha256 "$MACOS_SHA256"
           version "${{ github.ref_name }}"
         
