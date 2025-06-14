@@ -223,57 +223,6 @@ jobs:
         # Copy RPM to current directory
         cp rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
 
-    - name: Create AppImage (Linux x86_64 only)
-      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
-      run: |
-        # Download AppImage tools
-        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-        chmod +x appimagetool-x86_64.AppImage
-        
-        # Create AppDir structure
-        mkdir -p NetMgr.AppDir/usr/bin
-        mkdir -p NetMgr.AppDir/usr/share/applications
-        mkdir -p NetMgr.AppDir/usr/share/icons/hicolor/256x256/apps
-        
-        # Copy binary
-        cp build/netmgr NetMgr.AppDir/usr/bin/
-        
-        # Create desktop file
-        cat > NetMgr.AppDir/usr/share/applications/netmgr.desktop << 'EOF'
-        [Desktop Entry]
-        Type=Application
-        Name=NetMgr
-        Comment=Cross-platform network management tool
-        Exec=netmgr
-        Icon=netmgr
-        Categories=Network;System;
-        Terminal=true
-        EOF
-        
-        # Create AppRun
-        cat > NetMgr.AppDir/AppRun << 'EOF'
-        #!/bin/bash
-        HERE="$(dirname "$(readlink -f "${0}")")"
-        exec "${HERE}/usr/bin/netmgr" "$@"
-        EOF
-        chmod +x NetMgr.AppDir/AppRun
-        
-        # Copy desktop file to root
-        cp NetMgr.AppDir/usr/share/applications/netmgr.desktop NetMgr.AppDir/
-        
-        # Create simple icon using text (fallback)
-        echo "Creating icon..."
-        cat > NetMgr.AppDir/netmgr.svg << 'EOF'
-        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="256" height="256" fill="#4285f4"/>
-          <text x="128" y="140" font-family="Arial" font-size="48" fill="white" text-anchor="middle">NetMgr</text>
-        </svg>
-        EOF
-        
-        # Build AppImage
-        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-        ./appimagetool-x86_64.AppImage NetMgr.AppDir netmgr-${VERSION}-x86_64.AppImage
-
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
       with:
@@ -282,7 +231,6 @@ jobs:
           ${{ matrix.name }}
           *.deb
           *.rpm
-          *.AppImage
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
