@@ -105,13 +105,16 @@ jobs:
         set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
         EOF
 
-    - name: Configure CMake
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
       run: |
-        if [ "$RUNNER_OS" == "Windows" ]; then
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows ${{ matrix.cmake_args }}
-        else
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
-        fi
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows ${{ matrix.cmake_args }}
+
+    - name: Configure CMake (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
 
     - name: Build release binary
       run: cmake --build build --config Release
@@ -133,8 +136,9 @@ jobs:
 
     - name: Prepare binary (Windows)
       if: runner.os == 'Windows'
+      shell: cmd
       run: |
-        cp build/Release/netmgr.exe ${{ matrix.name }}
+        copy build\Release\netmgr.exe ${{ matrix.name }}
 
     - name: Build Debian package (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
@@ -161,7 +165,7 @@ jobs:
         Priority: optional
         Architecture: amd64
         Depends: libc6 (>= 2.17), libstdc++6 (>= 5.4.0), libjsoncpp25 (>= 1.7.4)
-        Maintainer: NetMgr Team <team@netmgr.org>
+        Maintainer: Rimaki <rimaki@rimakiproject.online>
         Description: Cross-platform network management tool
          A comprehensive network management utility that provides
          unified interface management, routing, firewall configuration,
@@ -220,7 +224,7 @@ jobs:
         %{_bindir}/netmgr
         
         %changelog
-        * $(date '+%a %b %d %Y') NetMgr Team <team@netmgr.org> - ${VERSION}-1
+        * $(date '+%a %b %d %Y') Rimaki <rimaki@rimakiproject.online> - ${VERSION}-1
         - Release ${VERSION}
         EOF
         
@@ -232,8 +236,6 @@ jobs:
         
         # Copy RPM to current directory
         cp rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
-
-
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
