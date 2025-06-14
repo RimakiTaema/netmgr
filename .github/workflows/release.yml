@@ -326,13 +326,17 @@ jobs:
       uses: actions/download-artifact@v3
 
     - name: Setup GPG for package signing
-      if: ${{ secrets.GPG_PRIVATE_KEY }}
+      env:
+        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      if: env.GPG_PRIVATE_KEY != ''
       run: |
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
         echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --sign --armor --detach-sign README.md
 
     - name: Publish to Launchpad PPA
-      if: ${{ secrets.LAUNCHPAD_PPA_KEY }}
+      env:
+        LAUNCHPAD_PPA_KEY: ${{ secrets.LAUNCHPAD_PPA_KEY }}
+      if: env.LAUNCHPAD_PPA_KEY != ''
       run: |
         # Setup Launchpad credentials
         mkdir -p ~/.ssh
