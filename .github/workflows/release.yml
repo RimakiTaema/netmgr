@@ -38,85 +38,232 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-linux-gnu
             name: netmgr-linux-x86_64
+            cmake_args: ""
           - os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-linux-gnu
             name: netmgr-linux-aarch64
+            cmake_args: "-DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake"
           - os: macos-latest
             target: x86_64-apple-darwin
             name: netmgr-macos-x86_64
+            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64"
           - os: macos-latest
             target: aarch64-apple-darwin
             name: netmgr-macos-aarch64
+            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=arm64"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             name: netmgr-windows-x86_64.exe
+            cmake_args: "-A x64"
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ matrix.target }}
-
-    - name: Install cross-compilation tools (Linux)
-      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'aarch64-unknown-linux-gnu'
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
+        sudo apt-get install -y build-essential cmake ninja-build
+        sudo apt-get install -y libjsoncpp-dev
+        # Install cross-compilation tools for ARM64
+        if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        fi
 
-    - name: Install cargo-deb (Linux only)
-      if: matrix.os == 'ubuntu-22.04'
-      run: cargo install cargo-deb
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake ninja jsoncpp
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake ninja
+        vcpkg install jsoncpp:x64-windows
+
+    - name: Create ARM64 toolchain file
+      if: matrix.target == 'aarch64-linux-gnu'
+      run: |
+        mkdir -p cmake
+        cat > cmake/aarch64-toolchain.cmake << 'EOF'
+        set(CMAKE_SYSTEM_NAME Linux)
+        set(CMAKE_SYSTEM_PROCESSOR aarch64)
+        set(CMAKE_C_COMPILER aarch64-linux-gnu-gcc)
+        set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
+        set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu)
+        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+        EOF
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
 
     - name: Build release binary
-      run: |
-        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-          export CC=aarch64-linux-gnu-gcc
-          export CXX=aarch64-linux-gnu-g++
-          export AR=aarch64-linux-gnu-ar
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-        fi
-        cargo build --release --target ${{ matrix.target }}
-      shell: bash
+      run: cmake --build build --config Release
 
     - name: Strip binary (Unix)
-      if: matrix.os != 'windows-latest'
+      if: runner.os != 'Windows'
       run: |
-        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-          aarch64-linux-gnu-strip target/${{ matrix.target }}/release/netmgr
+        if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
+          aarch64-linux-gnu-strip build/netmgr
         else
-          strip target/${{ matrix.target }}/release/netmgr
+          strip build/netmgr
         fi
 
     - name: Prepare binary (Unix)
-      if: matrix.os != 'windows-latest'
+      if: runner.os != 'Windows'
       run: |
-        cp target/${{ matrix.target }}/release/netmgr ${{ matrix.name }}
+        cp build/netmgr ${{ matrix.name }}
         chmod +x ${{ matrix.name }}
 
     - name: Prepare binary (Windows)
-      if: matrix.os == 'windows-latest'
+      if: runner.os == 'Windows'
       run: |
-        cp target/${{ matrix.target }}/release/netmgr.exe ${{ matrix.name }}
+        cp build/Release/netmgr.exe ${{ matrix.name }}
 
     - name: Build Debian package (Linux x86_64 only)
-      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-unknown-linux-gnu'
+      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
       run: |
-        cargo deb --target ${{ matrix.target }}
-        cp target/${{ matrix.target }}/debian/*.deb netmgr_${{ github.ref_name }}_amd64.deb
+        # Create package structure
+        mkdir -p package/DEBIAN
+        mkdir -p package/usr/bin
+        mkdir -p package/usr/share/doc/netmgr
+        mkdir -p package/usr/share/man/man1
+        
+        # Copy files
+        cp build/netmgr package/usr/bin/
+        cp README.md package/usr/share/doc/netmgr/
+        cp LICENSE package/usr/share/doc/netmgr/
+        
+        # Create control file
+        cat > package/DEBIAN/control << EOF
+        Package: netmgr
+        Version: ${{ github.ref_name }}
+        Section: net
+        Priority: optional
+        Architecture: amd64
+        Depends: libc6 (>= 2.17), libstdc++6 (>= 5.4.0), libjsoncpp25 (>= 1.7.4)
+        Maintainer: NetMgr Team <team@netmgr.org>
+        Description: Cross-platform network management tool
+         A comprehensive network management utility that provides
+         unified interface management, routing, firewall configuration,
+         and network diagnostics across different platforms.
+        EOF
+        
+        # Copy postinst and postrm scripts
+        cp debian/postinst package/DEBIAN/
+        cp debian/postrm package/DEBIAN/
+        chmod 755 package/DEBIAN/postinst package/DEBIAN/postrm
+        
+        # Build package
+        dpkg-deb --build package netmgr_${{ github.ref_name }}_amd64.deb
+
+    - name: Build RPM package (Linux x86_64 only)
+      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
+      run: |
+        # Install rpm tools
+        sudo apt-get install -y rpm
+        
+        # Create RPM build structure
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        
+        # Create spec file
+        cat > ~/rpmbuild/SPECS/netmgr.spec << 'EOF'
+        Name:           netmgr
+        Version:        %{getenv:GITHUB_REF_NAME}
+        Release:        1%{?dist}
+        Summary:        Cross-platform network management tool
+        
+        License:        MIT
+        URL:            https://github.com/netmgr/netmgr
+        Source0:        netmgr-%{version}.tar.gz
+        
+        BuildRequires:  gcc-c++ cmake ninja-build libjsoncpp-devel
+        Requires:       libjsoncpp
+        
+        %description
+        A comprehensive network management utility that provides
+        unified interface management, routing, firewall configuration,
+        and network diagnostics across different platforms.
+        
+        %prep
+        %setup -q
+        
+        %build
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --config Release
+        
+        %install
+        mkdir -p %{buildroot}%{_bindir}
+        install -m 755 build/netmgr %{buildroot}%{_bindir}/netmgr
+        
+        %files
+        %{_bindir}/netmgr
+        %doc README.md
+        %license LICENSE
+        
+        %changelog
+        * $(date +'%a %b %d %Y') NetMgr Team <team@netmgr.org> - %{version}-1
+        - Initial release
+        EOF
+        
+        # Create source tarball
+        tar czf ~/rpmbuild/SOURCES/netmgr-${{ github.ref_name }}.tar.gz \
+          --transform 's,^,netmgr-${{ github.ref_name }}/,' \
+          --exclude='.git*' --exclude='build' .
+        
+        # Build RPM
+        GITHUB_REF_NAME=${{ github.ref_name }} rpmbuild -ba ~/rpmbuild/SPECS/netmgr.spec
+        cp ~/rpmbuild/RPMS/x86_64/netmgr-*.rpm ./
+
+    - name: Create AppImage (Linux x86_64 only)
+      if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
+      run: |
+        # Download AppImage tools
+        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Create AppDir structure
+        mkdir -p NetMgr.AppDir/usr/bin
+        mkdir -p NetMgr.AppDir/usr/share/applications
+        mkdir -p NetMgr.AppDir/usr/share/icons/hicolor/256x256/apps
+        
+        # Copy binary
+        cp build/netmgr NetMgr.AppDir/usr/bin/
+        
+        # Create desktop file
+        cat > NetMgr.AppDir/usr/share/applications/netmgr.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=NetMgr
+        Comment=Cross-platform network management tool
+        Exec=netmgr
+        Icon=netmgr
+        Categories=Network;System;
+        Terminal=true
+        EOF
+        
+        # Create AppRun
+        cat > NetMgr.AppDir/AppRun << 'EOF'
+        #!/bin/bash
+        HERE="$(dirname "$(readlink -f "${0}")")"
+        exec "${HERE}/usr/bin/netmgr" "$@"
+        EOF
+        chmod +x NetMgr.AppDir/AppRun
+        
+        # Copy desktop file to root
+        cp NetMgr.AppDir/usr/share/applications/netmgr.desktop NetMgr.AppDir/
+        
+        # Create simple icon (placeholder)
+        convert -size 256x256 xc:blue NetMgr.AppDir/netmgr.png || echo "No icon created"
+        
+        # Build AppImage
+        ./appimagetool-x86_64.AppImage NetMgr.AppDir netmgr-${{ github.ref_name }}-x86_64.AppImage
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
@@ -124,6 +271,93 @@ jobs:
         tag_name: ${{ github.ref_name }}
         files: |
           ${{ matrix.name }}
-          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-unknown-linux-gnu' && format('netmgr_{0}_amd64.deb', github.ref_name) || '' }}
+          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && format('netmgr_{0}_amd64.deb', github.ref_name) || '' }}
+          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && 'netmgr-*.rpm' || '' }}
+          ${{ matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu' && format('netmgr-{0}-x86_64.AppImage', github.ref_name) || '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-docker:
+    needs: create-release
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}:latest
+          ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  publish-packages:
+    needs: [create-release, build-release]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Setup GPG for package signing
+      run: |
+        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
+        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --sign --armor --detach-sign README.md
+
+    - name: Publish to Launchpad PPA
+      if: secrets.LAUNCHPAD_PPA_KEY != ''
+      run: |
+        # Setup Launchpad credentials
+        echo "${{ secrets.LAUNCHPAD_PPA_KEY }}" > ~/.ssh/launchpad_key
+        chmod 600 ~/.ssh/launchpad_key
+        
+        # Build source package for Launchpad
+        debuild -S -sa
+        
+        # Upload to PPA
+        dput ppa:netmgr/stable ../netmgr_*.changes
+
+    - name: Create Homebrew formula
+      run: |
+        # Calculate SHA256 for macOS binary
+        MACOS_SHA256=$(sha256sum netmgr-macos-x86_64 | cut -d' ' -f1)
+        
+        # Create Homebrew formula
+        cat > netmgr.rb << EOF
+        class Netmgr < Formula
+          desc "Cross-platform network management tool"
+          homepage "https://github.com/netmgr/netmgr"
+          url "https://github.com/netmgr/netmgr/releases/download/${{ github.ref_name }}/netmgr-macos-x86_64"
+          sha256 "$MACOS_SHA256"
+          version "${{ github.ref_name }}"
+        
+          def install
+            bin.install "netmgr-macos-x86_64" => "netmgr"
+          end
+        
+          test do
+            system "#{bin}/netmgr", "--version"
+          end
+        end
+        EOF
+        
+        # Upload formula (would need homebrew-tap repository)
+        echo "Homebrew formula created: netmgr.rb"

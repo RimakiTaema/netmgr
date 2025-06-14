@@ -1,0 +1,43 @@
+# Alpine-based lightweight image
+FROM alpine:3.18 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    ninja \
+    jsoncpp-dev \
+    git
+
+WORKDIR /app
+COPY . .
+
+# Build with static linking for Alpine
+RUN cmake -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_EXE_LINKER_FLAGS="-static" && \
+    cmake --build build --config Release
+
+# Runtime stage
+FROM alpine:3.18
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    iproute2 \
+    iptables \
+    bind-tools \
+    iputils \
+    traceroute \
+    netcat-openbsd
+
+# Copy binary
+COPY --from=builder /app/build/netmgr /usr/local/bin/netmgr
+
+# Create user and directories
+RUN addgroup -S netmgr && adduser -S netmgr -G netmgr && \
+    mkdir -p /etc/netmgr /var/log/netmgr && \
+    chown netmgr:netmgr /etc/netmgr /var/log/netmgr
+
+USER netmgr
+ENTRYPOINT ["/usr/local/bin/netmgr"]
+CMD ["--help"]

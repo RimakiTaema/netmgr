@@ -1,0 +1,19 @@
+Package: netmgr
+Version: 1.0.0
+Section: net
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.17), libstdc++6 (>= 5.4.0)
+Maintainer: Your Name <your.email@example.com>
+Description: Cross-platform network management tool
+ A comprehensive network management utility that provides
+ unified interface management, routing, firewall configuration,
+ and network diagnostics across different platforms.
+ .
+ Features include:
+  - Network interface configuration
+  - Routing table management
+  - Firewall rules management
+  - Port forwarding
+  - DNS configuration
+  - Network diagnostics

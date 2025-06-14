@@ -1,0 +1,9 @@
+netmgr (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Cross-platform network management tool
+  * Support for Linux, macOS, and Windows
+  * Interface management, routing, firewall configuration
+  * Network diagnostics and monitoring
+
+ -- Your Name <your.email@example.com>  Sat, 14 Dec 2024 23:19:43 +0000
