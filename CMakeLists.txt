@@ -48,19 +48,37 @@ endif()
 # Find and link jsoncpp
 set(JSONCPP_FOUND FALSE)
 
-# Try pkg-config first (works on Linux and Homebrew macOS)
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(JSONCPP jsoncpp)
-    if(JSONCPP_FOUND)
-        target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
-        target_link_libraries(netmgr ${JSONCPP_LIBRARIES})
-        target_compile_options(netmgr PRIVATE ${JSONCPP_CFLAGS_OTHER})
-        message(STATUS "Found jsoncpp via pkg-config")
+# On macOS with vcpkg, try vcpkg's find_package first
+if(APPLE AND DEFINED CMAKE_TOOLCHAIN_FILE)
+    find_package(jsoncpp CONFIG QUIET)
+    if(jsoncpp_FOUND)
+        target_link_libraries(netmgr jsoncpp_lib)
+        set(JSONCPP_FOUND TRUE)
+        message(STATUS "Found jsoncpp via vcpkg find_package")
     endif()
 endif()
 
-# Fallback to find_path/find_library (works with vcpkg and manual installs)
+# Try pkg-config if vcpkg didn't work
+if(NOT JSONCPP_FOUND)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(JSONCPP jsoncpp)
+        if(JSONCPP_FOUND)
+            # Debug: Print what pkg-config found
+            message(STATUS "pkg-config jsoncpp libraries: ${JSONCPP_LIBRARIES}")
+            message(STATUS "pkg-config jsoncpp library dirs: ${JSONCPP_LIBRARY_DIRS}")
+            message(STATUS "pkg-config jsoncpp include dirs: ${JSONCPP_INCLUDE_DIRS}"
+            
+            target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
+            target_link_directories(netmgr PRIVATE ${JSONCPP_LIBRARY_DIRS})
+            target_link_libraries(netmgr ${JSONCPP_LIBRARIES})
+            target_compile_options(netmgr PRIVATE ${JSONCPP_CFLAGS_OTHER})
+            message(STATUS "Found jsoncpp via pkg-config")
+        endif()
+    endif()
+endif()
+
+# Fallback to manual search
 if(NOT JSONCPP_FOUND)
     find_path(JSONCPP_INCLUDE_DIR json/json.h
         PATHS 
@@ -82,17 +100,7 @@ if(NOT JSONCPP_FOUND)
         target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIR})
         target_link_libraries(netmgr ${JSONCPP_LIBRARY})
         set(JSONCPP_FOUND TRUE)
-        message(STATUS "Found jsoncpp at ${JSONCPP_LIBRARY}")
-    endif()
-endif()
-
-# Final fallback using find_package (for vcpkg and modern CMake)
-if(NOT JSONCPP_FOUND)
-    find_package(jsoncpp CONFIG QUIET)
-    if(jsoncpp_FOUND)
-        target_link_libraries(netmgr jsoncpp_lib)
-        set(JSONCPP_FOUND TRUE)
-        message(STATUS "Found jsoncpp via find_package")
+        message(STATUS "Found jsoncpp manually at ${JSONCPP_LIBRARY}")
     endif()
 endif()
 
