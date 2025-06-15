@@ -53,8 +53,14 @@ jobs:
         vcpkg install jsoncpp gtest
 
     - name: Configure CMake
+      if: runner.os != 'macOS'
       run: |
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        
+    - name: Configure CMake (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake ${{ matrix.cmake_args }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
