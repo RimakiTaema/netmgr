@@ -1,10 +1,16 @@
 #include "common.hpp"
 #include <iostream>
 #include <cstdlib>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <sstream>
 #include <cstring>
+
+// Platform-specific includes
+#ifdef _WIN32
+    #include <windows.h>
+    #include <io.h>
+#else
+    #include <unistd.h>
+#endif
 
 bool Common::verbose_logging = false;
 
@@ -24,10 +30,21 @@ void Common::init_logging(bool verbose) {
 }
 
 bool Common::is_root() {
-    #ifdef __unix__
-    return geteuid() == 0;
+    #ifdef _WIN32
+    // On Windows, check if running as administrator
+    BOOL isAdmin = FALSE;
+    PSID administratorsGroup = NULL;
+    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+    
+    if (AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID,
+                                DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
+                                &administratorsGroup)) {
+        CheckTokenMembership(NULL, administratorsGroup, &isAdmin);
+        FreeSid(administratorsGroup);
+    }
+    return isAdmin == TRUE;
     #else
-    return true; // Assume admin on Windows
+    return geteuid() == 0;
     #endif
 }
 
@@ -78,7 +95,12 @@ std::string Common::execute_command_output(const std::string& command, const std
         full_cmd += " " + arg;
     }
     
+    #ifdef _WIN32
+    FILE* pipe = _popen(full_cmd.c_str(), "r");
+    #else
     FILE* pipe = popen(full_cmd.c_str(), "r");
+    #endif
+    
     if (!pipe) {
         return "";
     }
@@ -89,7 +111,12 @@ std::string Common::execute_command_output(const std::string& command, const std
         result += buffer;
     }
     
+    #ifdef _WIN32
+    _pclose(pipe);
+    #else
     pclose(pipe);
+    #endif
+    
     return result;
 }
 
