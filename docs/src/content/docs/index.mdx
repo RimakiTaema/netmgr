@@ -1,0 +1,139 @@
+---
+title: netmgr
+description: A tool for managing network configurations with an enterprise-grade focus.
+template: splash
+hero:
+  tagline: Enterprised Grade Powered By C++ & C
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Get Started
+      link: /guides/getting-started/
+      icon: right-arrow
+    - text: View Source Code
+      link: https://github.com/RimakiTaema/netmgr
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import TestimonialGrid from '../../components/testimonial-grid.astro';
+import Testimonial from '../../components/testimonial.astro';
+
+## Features
+
+<CardGrid stagger>
+	<Card title="Advanced IPTables Management" icon="setting">
+		Config MTU Or etc. Via IPTables Is more advance and deeper.
+	</Card>
+	<Card title="Windows Support" icon="seti:windows">
+		More complex and advanced than netsh and support tcp & udp(1)
+	</Card>
+	{/* <Card title="Configure your site" icon="setting">
+		Edit your `sidebar` and other config in `astro.config.mjs`.
+	</Card>
+	<Card title="Read the docs" icon="open-book">
+		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+	</Card> */}
+</CardGrid>
+
+
+{  /*<script setup>
+import { VPTeamMembers } from 'vitepress/theme'
+
+const members = [
+  {
+    avatar: 'https://github.com/RimakiTaema.png',
+    name: 'Rimaki',
+    title: 'Lead Dev & Maintainer',
+    links: [
+      { icon: 'github', link: 'https://github.com/RimakiTaema' },
+      { icon: 'link', link: 'https://rimakiproject.online' }
+    ]
+  }
+]
+</script> */ }
+
+
+
+# About netmgr
+
+Netmgr is an enterprise-grade, cross-platform network control and wrapper utility built in **C++ & C**. Designed for system administrators, developers, and advanced users, it directly leverages native tools available on each platform—without relying on abstractions like `firewalld` or `ufw`.
+
+Its goal is to provide **precise control**, automation capabilities, and a future-proof CLI and scripting interface across Linux, Windows, and macOS.
+
+---
+
+## Supported Platforms
+
+| OS        | Primary Tools Used                            |
+|-----------|----------------------------------------------|
+| **Linux** | `ip`, `iptables`, `tc`                        |
+| **Windows** | `netsh`, `PowerShell`                        |
+| **macOS** | `networksetup`, `scutil`, `pfctl`             |
+
+No dependency on tools like `firewalld`, `ufw`, or GUI wrappers—`netmgr` speaks directly to the system.
+
+---
+
+## Key Features
+
+- **Advanced IPTables Integration**  
+  Configure complex routing, NAT, MTU, and port filtering in a structured and repeatable way.
+
+- **Cross-Platform Support**  
+  Native wrappers and behaviors per OS without breaking conventions. Windows supports both `TCP` and `UDP`.
+
+- **Enterprise Ready**  
+  Ships with optional build profiles, licensing controls, and internal audit logs (planned).
+
+- **Script & Automation Friendly**  
+  Designed for CI/CD pipelines, network testing, failover setups, or rapid config reloads.
+
+---
+
+## Why Not `ufw` or `firewalld`?
+
+`netmgr` is built to offer **fine-grained control** using native system-level tools, ideal for:
+
+- Security-focused deployments
+- Debugging or testing low-level configurations
+- Managing advanced networking scenarios (VPNs, tunnels, NAT configs, etc.)
+- Reducing abstraction and latency in packet handling
+
+---
+
+## License
+
+- **Open Source Edition:** MIT License  
+- **Enterprise Edition:** Requires a commercial license. See [Enterprise License Guide](/guides/enterprise/licence.md)
+
+---
+
+## Maintainer
+
+<Testimonial
+    name="Rimaki"
+    handle="RimakiTaema"
+    cite="https://github.com/RimakiTaema"
+>
+    Lead Dev & Maintainer
+
+</Testimonial>
+  {/*<VPTeamMembers size="medium" :members="members" /> */}
+
+---
+
+## Screenshots & Usage
+
+🚧 *Coming soon as part of the `examples/` section.*
+
+---
+
+## Contributions
+
+All contributions are welcome! Open an issue, fork the repo, or join the development discussion via GitHub.
+
+---
+
+> _“netmgr was built for people who need full control—not convenience with limits.”_
