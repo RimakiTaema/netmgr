@@ -75,8 +75,11 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install cmake ninja jsoncpp
-       
+        brew install cmake ninja
+        git clone https://github.com/Microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh
+        ./vcpkg/vcpkg install jsoncpp
+      
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
@@ -104,22 +107,16 @@ jobs:
         set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
         EOF
 
-    - name: Configure CMake (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
+    - name: Configure CMake
+      if: runner.os != 'macOS'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows ${{ matrix.cmake_args }}
-
-    - name: Configure CMake (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         
     - name: Configure CMake (macOS)
       if: runner.os == 'macOS'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
-
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+        
     - name: Build release binary
       run: cmake --build build --config Release
 
