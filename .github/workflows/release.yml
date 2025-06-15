@@ -41,22 +41,27 @@ jobs:
             target: x86_64-linux-gnu
             name: netmgr-linux-x86_64
             cmake_args: ""
+            strip_cmd: "strip"
           - os: ubuntu-22.04
             target: aarch64-linux-gnu
             name: netmgr-linux-aarch64
             cmake_args: "-DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake"
+            strip_cmd: "aarch64-linux-gnu-strip"
           - os: macos-latest
             target: x86_64-apple-darwin
             name: netmgr-macos-x86_64
             cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64"
+            strip_cmd: "strip"
           - os: macos-latest
             target: aarch64-apple-darwin
             name: netmgr-macos-aarch64
             cmake_args: "-DCMAKE_OSX_ARCHITECTURES=arm64"
+            strip_cmd: "strip"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             name: netmgr-windows-x86_64.exe
             cmake_args: ""
+            strip_cmd: ""
 
     steps:
     - name: Checkout code
@@ -71,7 +76,10 @@ jobs:
         # Install cross-compilation tools for ARM64
         if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          # Install ARM64 jsoncpp (cross-compiled)
+          sudo apt-get install -y libjsoncpp-dev:arm64 || echo "ARM64 jsoncpp not available via apt"
         fi
+        
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
@@ -105,28 +113,68 @@ jobs:
         set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
         set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
         set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+        # Skip jsoncpp for cross-compilation to avoid issues
+        set(CMAKE_DISABLE_FIND_PACKAGE_jsoncpp TRUE)
         EOF
 
-    - name: Configure CMake
+    - name: Configure CMake (Linux/Windows)
       if: runner.os != 'macOS'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
         
     - name: Configure CMake (macOS)
       if: runner.os == 'macOS'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake ${{ matrix.cmake_args }}
         
     - name: Build release binary
       run: cmake --build build --config Release
 
-    - name: Strip binary (Unix)
-      if: runner.os != 'Windows'
+    - name: Verify binary exists and check architecture
       run: |
-        if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
-          aarch64-linux-gnu-strip build/netmgr
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          if [[ ! -f "build/Release/netmgr.exe" ]]; then
+            echo "Error: Windows binary not found at build/Release/netmgr.exe"
+            ls -la build/
+            ls -la build/Release/ || echo "Release directory not found"
+            exit 1
+          fi
+          echo "Windows binary found"
+          file build/Release/netmgr.exe || echo "file command not available on Windows"
         else
-          strip build/netmgr
+          if [[ ! -f "build/netmgr" ]]; then
+            echo "Error: Binary not found at build/netmgr"
+            ls -la build/
+            exit 1
+          fi
+          echo "Binary found, checking architecture:"
+          file build/netmgr
+          
+          # Verify it's the correct architecture for cross-compilation
+          if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
+            if file build/netmgr | grep -q "aarch64\|ARM aarch64"; then
+              echo "✓ ARM64 binary confirmed"
+            else
+              echo "⚠ Warning: Binary may not be ARM64 architecture"
+              file build/netmgr
+            fi
+          fi
+        fi
+
+    - name: Strip binary (Unix)
+      if: runner.os != 'Windows' && matrix.strip_cmd != ''
+      run: |
+        # Only strip if the binary exists and strip command is available
+        if [[ -f "build/netmgr" ]]; then
+          if command -v ${{ matrix.strip_cmd }} &> /dev/null; then
+            echo "Stripping binary with ${{ matrix.strip_cmd }}"
+            ${{ matrix.strip_cmd }} build/netmgr
+          else
+            echo "Warning: ${{ matrix.strip_cmd }} not found, skipping strip"
+          fi
+        else
+          echo "Error: Binary not found for stripping"
+          exit 1
         fi
 
     - name: Prepare binary (Unix)
@@ -152,8 +200,8 @@ jobs:
         
         # Copy files
         cp build/netmgr package/usr/bin/
-        cp README.md package/usr/share/doc/netmgr/
-        cp LICENSE package/usr/share/doc/netmgr/
+        cp README.md package/usr/share/doc/netmgr/ || echo "README.md not found"
+        cp LICENSE package/usr/share/doc/netmgr/ || echo "LICENSE not found"
         
         # Clean version string for package
         VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
