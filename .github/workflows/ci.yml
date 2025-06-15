@@ -41,10 +41,10 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-       brew install cmake ninja jsoncpp googletest pkg-config
-       # Ensure pkg-config can find jsoncpp
-       export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
-       pkg-config --exists jsoncpp && echo "jsoncpp found via pkg-config"
+        brew install cmake ninja
+        git clone https://github.com/Microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh
+        ./vcpkg/vcpkg install jsoncpp
     
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows'
