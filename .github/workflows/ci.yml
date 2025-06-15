@@ -52,12 +52,12 @@ jobs:
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
         
     - name: Configure CMake (macOS)
       if: runner.os == 'macOS'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
