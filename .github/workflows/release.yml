@@ -130,36 +130,42 @@ jobs:
     - name: Build release binary
       run: cmake --build build --config Release
 
-    - name: Verify binary exists and check architecture
+    - name: Verify binary exists and check architecture (Unix)
+      if: runner.os != 'Windows'
       run: |
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          if [[ ! -f "build/Release/netmgr.exe" ]]; then
-            echo "Error: Windows binary not found at build/Release/netmgr.exe"
-            ls -la build/
-            ls -la build/Release/ || echo "Release directory not found"
-            exit 1
-          fi
-          echo "Windows binary found"
-          file build/Release/netmgr.exe || echo "file command not available on Windows"
-        else
-          if [[ ! -f "build/netmgr" ]]; then
-            echo "Error: Binary not found at build/netmgr"
-            ls -la build/
-            exit 1
-          fi
-          echo "Binary found, checking architecture:"
-          file build/netmgr
-          
-          # Verify it's the correct architecture for cross-compilation
-          if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
-            if file build/netmgr | grep -q "aarch64\|ARM aarch64"; then
-              echo "✓ ARM64 binary confirmed"
-            else
-              echo "⚠ Warning: Binary may not be ARM64 architecture"
-              file build/netmgr
-            fi
+        if [[ ! -f "build/netmgr" ]]; then
+          echo "Error: Binary not found at build/netmgr"
+          ls -la build/
+          exit 1
+        fi
+        echo "Binary found, checking architecture:"
+        file build/netmgr
+        
+        # Verify it's the correct architecture for cross-compilation
+        if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
+          if file build/netmgr | grep -q "aarch64\|ARM aarch64"; then
+            echo "✓ ARM64 binary confirmed"
+          else
+            echo "⚠ Warning: Binary may not be ARM64 architecture"
+            file build/netmgr
           fi
         fi
+
+    - name: Verify binary exists (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        if (-not (Test-Path "build/Release/netmgr.exe")) {
+          Write-Host "Error: Windows binary not found at build/Release/netmgr.exe"
+          Get-ChildItem build/
+          if (Test-Path "build/Release/") {
+            Get-ChildItem build/Release/
+          } else {
+            Write-Host "Release directory not found"
+          }
+          exit 1
+        }
+        Write-Host "Windows binary found"
 
     - name: Strip binary (Unix)
       if: runner.os != 'Windows' && matrix.strip_cmd != ''
@@ -185,9 +191,9 @@ jobs:
 
     - name: Prepare binary (Windows)
       if: runner.os == 'Windows'
-      shell: cmd
+      shell: pwsh
       run: |
-        copy build\Release\netmgr.exe ${{ matrix.name }}
+        Copy-Item "build/Release/netmgr.exe" "${{ matrix.name }}"
 
     - name: Build Debian package (Linux x86_64 only)
       if: matrix.os == 'ubuntu-22.04' && matrix.target == 'x86_64-linux-gnu'
