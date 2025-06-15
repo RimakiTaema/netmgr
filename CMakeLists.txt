@@ -54,8 +54,7 @@ if(jsoncpp_FOUND)
     target_link_libraries(netmgr JsonCpp::JsonCpp)
     set(JSONCPP_FOUND TRUE)
     message(STATUS "Found jsoncpp via CONFIG find_package")
-else
-    # Try pkg-config fallback
+else()
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(JSONCPP jsoncpp)
