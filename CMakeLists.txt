@@ -67,7 +67,7 @@ if(NOT JSONCPP_FOUND)
             # Debug: Print what pkg-config found
             message(STATUS "pkg-config jsoncpp libraries: ${JSONCPP_LIBRARIES}")
             message(STATUS "pkg-config jsoncpp library dirs: ${JSONCPP_LIBRARY_DIRS}")
-            message(STATUS "pkg-config jsoncpp include dirs: ${JSONCPP_INCLUDE_DIRS}"
+            message(STATUS "pkg-config jsoncpp include dirs: ${JSONCPP_INCLUDE_DIRS}")
             
             target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
             target_link_directories(netmgr PRIVATE ${JSONCPP_LIBRARY_DIRS})
