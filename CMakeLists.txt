@@ -45,7 +45,10 @@ else()
     endif()
 endif()
 
-# Find and link jsoncpp if available
+# Find and link jsoncpp
+set(JSONCPP_FOUND FALSE)
+
+# Try pkg-config first (works on Linux and Homebrew macOS)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(JSONCPP jsoncpp)
@@ -53,23 +56,48 @@ if(PkgConfig_FOUND)
         target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
         target_link_libraries(netmgr ${JSONCPP_LIBRARIES})
         target_compile_options(netmgr PRIVATE ${JSONCPP_CFLAGS_OTHER})
+        message(STATUS "Found jsoncpp via pkg-config")
     endif()
 endif()
 
-# Windows-specific jsoncpp handling (for vcpkg)
-if(WIN32 AND NOT JSONCPP_FOUND)
+# Fallback to find_path/find_library (works with vcpkg and manual installs)
+if(NOT JSONCPP_FOUND)
     find_path(JSONCPP_INCLUDE_DIR json/json.h
-        PATHS ${CMAKE_PREFIX_PATH}/include
+        PATHS 
+            ${CMAKE_PREFIX_PATH}/include
+            /usr/local/include
+            /opt/homebrew/include
         PATH_SUFFIXES jsoncpp
     )
+    
     find_library(JSONCPP_LIBRARY
-        NAMES jsoncpp
-        PATHS ${CMAKE_PREFIX_PATH}/lib
+        NAMES jsoncpp jsoncpp_lib
+        PATHS 
+            ${CMAKE_PREFIX_PATH}/lib
+            /usr/local/lib
+            /opt/homebrew/lib
     )
+    
     if(JSONCPP_INCLUDE_DIR AND JSONCPP_LIBRARY)
         target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIR})
         target_link_libraries(netmgr ${JSONCPP_LIBRARY})
+        set(JSONCPP_FOUND TRUE)
+        message(STATUS "Found jsoncpp at ${JSONCPP_LIBRARY}")
     endif()
+endif()
+
+# Final fallback using find_package (for vcpkg and modern CMake)
+if(NOT JSONCPP_FOUND)
+    find_package(jsoncpp CONFIG QUIET)
+    if(jsoncpp_FOUND)
+        target_link_libraries(netmgr jsoncpp_lib)
+        set(JSONCPP_FOUND TRUE)
+        message(STATUS "Found jsoncpp via find_package")
+    endif()
+endif()
+
+if(NOT JSONCPP_FOUND)
+    message(WARNING "jsoncpp not found - some features may be disabled")
 endif()
 
 # Install target
