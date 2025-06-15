@@ -76,8 +76,7 @@ jobs:
         # Install cross-compilation tools for ARM64
         if [[ "${{ matrix.target }}" == "aarch64-linux-gnu" ]]; then
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          # Install ARM64 jsoncpp (cross-compiled)
-          sudo apt-get install -y libjsoncpp-dev:arm64 || echo "ARM64 jsoncpp not available via apt"
+          # Don't install ARM64 jsoncpp - we'll disable it in the toolchain
         fi
         
     - name: Install dependencies (macOS)
@@ -113,8 +112,9 @@ jobs:
         set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
         set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
         set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-        # Skip jsoncpp for cross-compilation to avoid issues
+        # Disable jsoncpp for cross-compilation to avoid linking issues
         set(CMAKE_DISABLE_FIND_PACKAGE_jsoncpp TRUE)
+        set(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)
         EOF
 
     - name: Configure CMake (Linux/Windows)

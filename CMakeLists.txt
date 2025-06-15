@@ -26,7 +26,8 @@ add_executable(netmgr ${SOURCES})
 
 # Compiler-specific flags
 if(MSVC)
-    # MSVC compiler flags
+    # MSVC compiler flags - remove default /W3 and set /W4
+    string(REGEX REPLACE "/W[0-4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     target_compile_options(netmgr PRIVATE
         /W4          # Warning level 4
         /permissive- # Disable non-conforming code

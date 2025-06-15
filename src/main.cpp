@@ -4,7 +4,12 @@
 #include <map>
 #include <memory>
 #include <cstdlib>
+
+// Platform-specific includes
+#ifndef _WIN32
 #include <unistd.h>
+#endif
+
 #include "cli/cli.hpp"
 #include "common/common.hpp"
 #include "modules/interface.hpp"
@@ -25,7 +30,7 @@ int main(int argc, char* argv[]) {
         Common::init_logging(options.verbose);
         
         // Check for root privileges on Unix systems
-        #ifdef __unix__
+        #if defined(__unix__) || defined(__APPLE__)
         if (!options.dry_run && !Common::is_root()) {
             std::cerr << "This tool requires administrator privileges" << std::endl;
             return 1;
