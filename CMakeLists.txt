@@ -45,57 +45,61 @@ else()
     endif()
 endif()
 
-# Find and link jsoncpp
+# Find and link jsoncpp (optional for cross-compilation)
 set(JSONCPP_FOUND FALSE)
 
-# Try modern find_package first (works with vcpkg and modern installs)
-find_package(jsoncpp CONFIG QUIET)
-if(jsoncpp_FOUND)
-    target_link_libraries(netmgr JsonCpp::JsonCpp)
-    set(JSONCPP_FOUND TRUE)
-    message(STATUS "Found jsoncpp via CONFIG find_package")
-else()
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(JSONCPP jsoncpp)
-        if(JSONCPP_FOUND)
-            target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
-            target_link_directories(netmgr PRIVATE ${JSONCPP_LIBRARY_DIRS})
-            target_link_libraries(netmgr ${JSONCPP_LIBRARIES})
-            target_compile_options(netmgr PRIVATE ${JSONCPP_CFLAGS_OTHER})
-            message(STATUS "Found jsoncpp via pkg-config")
+# Skip jsoncpp if explicitly disabled (for cross-compilation)
+if(NOT CMAKE_DISABLE_FIND_PACKAGE_jsoncpp)
+    # Try modern find_package first (works with vcpkg and modern installs)
+    find_package(jsoncpp CONFIG QUIET)
+    if(jsoncpp_FOUND)
+        target_link_libraries(netmgr JsonCpp::JsonCpp)
+        set(JSONCPP_FOUND TRUE)
+        message(STATUS "Found jsoncpp via CONFIG find_package")
+    else()
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND AND NOT CMAKE_DISABLE_FIND_PACKAGE_PkgConfig)
+            pkg_check_modules(JSONCPP jsoncpp)
+            if(JSONCPP_FOUND)
+                target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIRS})
+                target_link_directories(netmgr PRIVATE ${JSONCPP_LIBRARY_DIRS})
+                target_link_libraries(netmgr ${JSONCPP_LIBRARIES})
+                target_compile_options(netmgr PRIVATE ${JSONCPP_CFLAGS_OTHER})
+                message(STATUS "Found jsoncpp via pkg-config")
+            endif()
         endif()
-    endif()
-    
-    # Manual search fallback
-    if(NOT JSONCPP_FOUND)
-        find_path(JSONCPP_INCLUDE_DIR json/json.h
-            PATHS 
-                ${CMAKE_PREFIX_PATH}/include
-                /usr/local/include
-                /opt/homebrew/include
-            PATH_SUFFIXES jsoncpp
-        )
         
-        find_library(JSONCPP_LIBRARY
-            NAMES jsoncpp
-            PATHS 
-                ${CMAKE_PREFIX_PATH}/lib
-                /usr/local/lib
-                /opt/homebrew/lib
-        )
-        
-        if(JSONCPP_INCLUDE_DIR AND JSONCPP_LIBRARY)
-            target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIR})
-            target_link_libraries(netmgr ${JSONCPP_LIBRARY})
-            set(JSONCPP_FOUND TRUE)
-            message(STATUS "Found jsoncpp manually at ${JSONCPP_LIBRARY}")
+        # Manual search fallback (skip for cross-compilation)
+        if(NOT JSONCPP_FOUND AND NOT CMAKE_CROSSCOMPILING)
+            find_path(JSONCPP_INCLUDE_DIR json/json.h
+                PATHS 
+                    ${CMAKE_PREFIX_PATH}/include
+                    /usr/local/include
+                    /opt/homebrew/include
+                PATH_SUFFIXES jsoncpp
+            )
+            
+            find_library(JSONCPP_LIBRARY
+                NAMES jsoncpp
+                PATHS 
+                    ${CMAKE_PREFIX_PATH}/lib
+                    /usr/local/lib
+                    /opt/homebrew/lib
+            )
+            
+            if(JSONCPP_INCLUDE_DIR AND JSONCPP_LIBRARY)
+                target_include_directories(netmgr PRIVATE ${JSONCPP_INCLUDE_DIR})
+                target_link_libraries(netmgr ${JSONCPP_LIBRARY})
+                set(JSONCPP_FOUND TRUE)
+                message(STATUS "Found jsoncpp manually at ${JSONCPP_LIBRARY}")
+            endif()
         endif()
     endif()
 endif()
 
 if(NOT JSONCPP_FOUND)
-    message(WARNING "jsoncpp not found - some features may be disabled")
+    message(STATUS "jsoncpp not found - JSON features will be disabled")
+    add_definitions(-DDISABLE_JSON_FEATURES)
 endif()
 
 # Install target

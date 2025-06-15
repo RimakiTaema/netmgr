@@ -20,6 +20,7 @@ int DNS::show_dns(const GlobalOptions& options) {
     std::cout << std::endl;
     
     #ifdef __linux__
+    (void)options; // Suppress unused parameter warning
     std::ifstream resolv_conf("/etc/resolv.conf");
     if (resolv_conf.is_open()) {
         std::string line;

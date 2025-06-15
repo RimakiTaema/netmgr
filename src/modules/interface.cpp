@@ -20,6 +20,8 @@ int Interface::handle_command(const GlobalOptions& options) {
 }
 
 int Interface::show_interfaces(const GlobalOptions& options) {
+    (void)options; // Suppress unused parameter warning for now
+    
     Common::log_info("All network interfaces:");
     std::cout << std::endl;
     
@@ -39,12 +41,15 @@ int Interface::show_interfaces(const GlobalOptions& options) {
     std::string output = Common::execute_command_output("ip", {"link", "show"});
     // Parse and display interface information
     // Implementation would parse the ip command output
+    std::cout << output << std::endl;
     #elif defined(__APPLE__)
     std::string output = Common::execute_command_output("ifconfig", {});
     // Parse and display interface information
+    std::cout << output << std::endl;
     #elif defined(_WIN32)
     std::string output = Common::execute_command_output("netsh", {"interface", "show", "interface"});
     // Parse and display interface information
+    std::cout << output << std::endl;
     #endif
     
     return 0;
